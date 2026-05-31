@@ -29,8 +29,9 @@ export function useScanner() {
   });
 
   const processingRef = useRef(false);
-  /** Permanent session set — barcodes confirmed checked-in (server or local) */
-  const checkedInSetRef = useRef<Set<string>>(new Set());
+  /** Barcodes confirmed checked-in this session, mapped to their full ScanResponse
+   *  so local replay preserves attendeeName and checkedInAt */
+  const checkedInMapRef = useRef<Map<string, ScanResponse>>(new Map());
   /** Short-TTL cache for non-success results (not_found, inactive) */
   const scanMemoryRef = useRef<Map<string, ScanMemory>>(new Map());
 
@@ -39,11 +40,9 @@ export function useScanner() {
     processingRef.current = true;
 
     // ── 1. Already checked-in this session → instant already_scanned, no API ──
-    if (checkedInSetRef.current.has(barcode)) {
-      setState((s) => ({
-        ...s,
-        overlay: { result: "already_scanned", message: "Ticket already scanned" },
-      }));
+    const prior = checkedInMapRef.current.get(barcode);
+    if (prior) {
+      setState((s) => ({ ...s, overlay: prior }));
       return; // processingRef stays true until dismissOverlay
     }
 
@@ -66,9 +65,13 @@ export function useScanner() {
       });
       const data: ScanResponse = await res.json();
 
-      // Mark as checked-in locally for success or already_scanned
+      // Store full response so local replays preserve attendeeName + checkedInAt
       if (data.result === "success" || data.result === "already_scanned") {
-        checkedInSetRef.current.add(barcode);
+        checkedInMapRef.current.set(barcode, {
+          ...data,
+          result: "already_scanned",
+          message: "Ticket already scanned",
+        });
       }
 
       // Cache non-success/non-already_scanned results with TTL

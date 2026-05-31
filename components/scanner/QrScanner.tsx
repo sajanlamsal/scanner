@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import jsQR from "jsqr";
 
-// Native W3C Shape Detection API — available in Chrome, Edge, Android WebView, Safari 17+
+// Native W3C Shape Detection API — Chrome, Edge, Android WebView (NOT Safari iOS)
 interface BarcodeDetectorResult { rawValue: string }
 declare class BarcodeDetector {
   constructor(options: { formats: string[] });
@@ -28,13 +29,6 @@ export default function QrScannerComponent({ onScan, active, loading = false }: 
     let rafId: number | null = null;
 
     const start = async () => {
-      if (!("BarcodeDetector" in window)) {
-        setCameraError("QR scanning requires Chrome or Safari 17+. Please update your browser.");
-        return;
-      }
-
-      const detector = new BarcodeDetector({ formats: ["qr_code"] });
-
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -56,17 +50,50 @@ export default function QrScannerComponent({ onScan, active, loading = false }: 
 
       const video = videoRef.current!;
       video.srcObject = stream;
-      await video.play();
+      try {
+        await video.play();
+      } catch {
+        // Autoplay blocked or srcObject cleared during cleanup
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
 
-      const loop = async () => {
-        if (cancelled) return;
-        try {
-          const [hit] = await detector.detect(video);
-          if (hit?.rawValue) onScanRef.current(hit.rawValue.trim());
-        } catch { /* frame not ready */ }
-        if (!cancelled) rafId = requestAnimationFrame(loop);
-      };
-      rafId = requestAnimationFrame(loop);
+      if ("BarcodeDetector" in window) {
+        // ── Native path: Chrome, Android WebView, Edge (fast C++ decode) ──
+        const detector = new BarcodeDetector({ formats: ["qr_code"] });
+        const loop = async () => {
+          if (cancelled) return;
+          try {
+            const [hit] = await detector.detect(video);
+            if (hit?.rawValue) onScanRef.current(hit.rawValue.trim());
+          } catch { /* frame not ready */ }
+          if (!cancelled) rafId = requestAnimationFrame(loop);
+        };
+        rafId = requestAnimationFrame(loop);
+      } else {
+        // ── Canvas fallback: iOS Safari, Firefox (jsQR pure-JS decode) ──
+        // Downsample to 480px — jsQR only needs to read the QR, not display it.
+        // Full 1280×1280 = 1.64M pixels synchronously blocks the main thread on iPhone.
+        const SCAN_SIZE = 480;
+        const canvas = document.createElement("canvas");
+        canvas.width = SCAN_SIZE;
+        canvas.height = SCAN_SIZE;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+        const INTERVAL = 1000 / 25; // cap at 25fps
+        let lastScan = 0;
+        const loop = (ts: number) => {
+          if (cancelled) return;
+          rafId = requestAnimationFrame(loop);
+          if (ts - lastScan < INTERVAL) return;
+          lastScan = ts;
+          if (video.readyState < HTMLMediaElement.HAVE_ENOUGH_DATA) return;
+          ctx.drawImage(video, 0, 0, SCAN_SIZE, SCAN_SIZE);
+          const img = ctx.getImageData(0, 0, SCAN_SIZE, SCAN_SIZE);
+          const code = jsQR(img.data, SCAN_SIZE, SCAN_SIZE);
+          if (code?.data) onScanRef.current(code.data.trim());
+        };
+        rafId = requestAnimationFrame(loop);
+      }
     };
 
     start();
