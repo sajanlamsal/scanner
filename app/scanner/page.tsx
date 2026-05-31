@@ -16,7 +16,7 @@ const QrScanner = dynamic(() => import("@/components/scanner/QrScanner"), {
 });
 
 export default function ScannerPage() {
-  const { state, handleScan, dismissOverlay, startScan } = useScanner();
+  const { state, handleScan, dismissOverlay } = useScanner();
   const { checkedIn, total } = state.stats;
   const pct = total > 0 ? Math.round((checkedIn / total) * 100) : 0;
   const router = useRouter();
@@ -89,10 +89,7 @@ export default function ScannerPage() {
           <QrScanner
             onScan={handleScan}
             active={state.scanning}
-            scanActive={state.scanActive}
             loading={state.loading}
-            busy={!!state.overlay}
-            onActivate={startScan}
           />
 
         </div>

@@ -5,7 +5,6 @@ import type { ScanResponse, EventStats } from "@/types";
 
 interface ScannerState {
   scanning: boolean;
-  scanActive: boolean;
   loading: boolean;
   overlay: ScanResponse | null;
   stats: EventStats;
@@ -24,7 +23,6 @@ const SCAN_MEMORY_TTL = 8_000;
 export function useScanner() {
   const [state, setState] = useState<ScannerState>({
     scanning: true,
-    scanActive: true,
     loading: false,
     overlay: null,
     stats: { total: 0, checkedIn: 0 },
@@ -37,18 +35,16 @@ export function useScanner() {
   const scanMemoryRef = useRef<Map<string, ScanMemory>>(new Map());
 
   const handleScan = useCallback(async (barcode: string) => {
-    if (processingRef.current) return; // debounce — ignore while overlay visible
+    if (processingRef.current) return; // scanner blocked while overlay is visible
     processingRef.current = true;
 
     // ── 1. Already checked-in this session → instant already_scanned, no API ──
     if (checkedInSetRef.current.has(barcode)) {
-      const alreadyResp: ScanResponse = {
-        result: "already_scanned",
-        message: "Ticket already scanned",
-      };
-      setState((s) => ({ ...s, overlay: alreadyResp }));
-      processingRef.current = false;
-      return;
+      setState((s) => ({
+        ...s,
+        overlay: { result: "already_scanned", message: "Ticket already scanned" },
+      }));
+      return; // processingRef stays true until dismissOverlay
     }
 
     // ── 2. Short-TTL cache for other results (not_found, inactive) ────────
@@ -56,12 +52,11 @@ export function useScanner() {
     const cached = scanMemoryRef.current.get(barcode);
     if (cached && now < cached.expiry) {
       setState((s) => ({ ...s, overlay: cached.result }));
-      processingRef.current = false;
-      return;
+      return; // processingRef stays true until dismissOverlay
     }
 
-    // Show spinner while waiting for API response
-    setState((s) => ({ ...s, loading: true, scanActive: false }));
+    // ── 3. API call ───────────────────────────────────────────────────────
+    setState((s) => ({ ...s, loading: true }));
 
     try {
       const res = await fetch("/api/scan", {
@@ -84,53 +79,27 @@ export function useScanner() {
         }
       }
 
-      // Only success is blocking (holds processingRef until dismissed)
-      const isBlocking = data.result === "success";
-
       setState((s) => {
         const updatedStats =
           data.result === "success"
             ? { ...s.stats, checkedIn: s.stats.checkedIn + 1 }
             : s.stats;
-
-        return {
-          ...s,
-          loading: false,
-          scanActive: false,
-          overlay: data,
-          stats: updatedStats,
-        };
+        return { ...s, loading: false, overlay: data, stats: updatedStats };
       });
-
-      if (!isBlocking) {
-        processingRef.current = false;
-      }
+      // processingRef stays true — dismissOverlay resets it
     } catch {
-      processingRef.current = false;
+      // Keep processingRef true so RAF loop doesn't hammer a broken network
       setState((s) => ({
         ...s,
         loading: false,
-        scanning: true,
-        overlay: {
-          result: "not_found",
-          message: "Network error — try again",
-        },
+        overlay: { result: "not_found", message: "Network error — try again" },
       }));
     }
   }, []);
 
   const dismissOverlay = useCallback(() => {
     processingRef.current = false;
-    setState((s) => ({
-      ...s,
-      overlay: null,
-      scanning: true,
-      scanActive: true,
-    }));
-  }, []);
-
-  const startScan = useCallback(() => {
-    setState((s) => ({ ...s, scanActive: true }));
+    setState((s) => ({ ...s, overlay: null, scanning: true }));
   }, []);
 
   const setStats = useCallback((stats: EventStats) => {
@@ -145,6 +114,6 @@ export function useScanner() {
       .catch(() => {});
   }, []);
 
-  return { state, handleScan, dismissOverlay, setStats, startScan };
+  return { state, handleScan, dismissOverlay, setStats };
 }
 

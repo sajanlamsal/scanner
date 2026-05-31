@@ -1,160 +1,90 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Html5Qrcode, Html5QrcodeScannerState, Html5QrcodeSupportedFormats } from "html5-qrcode";
+
+// Native W3C Shape Detection API — available in Chrome, Edge, Android WebView, Safari 17+
+interface BarcodeDetectorResult { rawValue: string }
+declare class BarcodeDetector {
+  constructor(options: { formats: string[] });
+  detect(source: HTMLVideoElement): Promise<BarcodeDetectorResult[]>;
+}
 
 interface Props {
   onScan: (barcode: string) => void;
   active: boolean;
-  scanActive: boolean;
   loading?: boolean;
-  busy?: boolean; // suppresses tap overlay while result banner is showing
-  onActivate: () => void;
 }
 
-const SCANNER_ELEMENT_ID = "qr-scan-region";
-
-const FORMATS = [Html5QrcodeSupportedFormats.QR_CODE];
-
-function clearContainer() {
-  const el = document.getElementById(SCANNER_ELEMENT_ID);
-  if (el) el.innerHTML = "";
-}
-
-export default function QrScanner({ onScan, active, scanActive, loading = false, busy = false, onActivate }: Props) {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+export default function QrScannerComponent({ onScan, active, loading = false }: Props) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const onScanRef = useRef(onScan);
-  const scanActiveRef = useRef(scanActive);
-  const startedRef = useRef(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   onScanRef.current = onScan;
-  scanActiveRef.current = scanActive;
-
-  // Toggle pause / resume when scanActive changes — no camera restart needed
-  useEffect(() => {
-    const s = scannerRef.current;
-    if (!s || !startedRef.current) return;
-    try {
-      const st = s.getState();
-      if (scanActive && st === Html5QrcodeScannerState.PAUSED) {
-        s.resume();
-      } else if (!scanActive && st === Html5QrcodeScannerState.SCANNING) {
-        s.pause(false); // keep video stream, pause detection
-      }
-    } catch { /* ignore */ }
-  }, [scanActive]);
 
   useEffect(() => {
-    if (!active) {
-      startedRef.current = false;
-      const s = scannerRef.current;
-      scannerRef.current = null;
-      if (s) {
-        try {
-          const st = s.getState();
-          if (
-            st === Html5QrcodeScannerState.SCANNING ||
-            st === Html5QrcodeScannerState.PAUSED
-          ) {
-            s.stop().catch(() => {});
-          }
-        } catch { /* already stopped */ }
+    if (!active) return;
+
+    let cancelled = false;
+    let rafId: number | null = null;
+
+    const start = async () => {
+      if (!("BarcodeDetector" in window)) {
+        setCameraError("QR scanning requires Chrome or Safari 17+. Please update your browser.");
+        return;
       }
-      clearContainer();
-      return;
-    }
 
-    let isCancelled = false;
+      const detector = new BarcodeDetector({ formats: ["qr_code"] });
 
-    const run = async () => {
-      // 100ms delay: gives React StrictMode's synchronous cleanup time to fire
-      // and set isCancelled=true before we touch the DOM
-      await new Promise<void>((r) => setTimeout(r, 100));
-      if (isCancelled) return;
-
-      clearContainer();
-      setCameraError(null);
-
-      const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, {
-        verbose: false,
-        formatsToSupport: FORMATS,
-        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-      });
-      scannerRef.current = scanner;
-
+      let stream: MediaStream;
       try {
-        await scanner.start(
-          { facingMode: { ideal: "environment" } },
-          {
-            fps: 10,
-            aspectRatio: 1.0,
-            qrbox: (w: number, h: number) => {
-              const edge = Math.round(Math.min(w, h) * 0.72);
-              return { width: edge, height: edge };
-            },
-            videoConstraints: {
-              facingMode: { ideal: "environment" },
-              width: { ideal: typeof window !== "undefined" && window.innerWidth < 640 ? 640 : 1280 },
-              height: { ideal: typeof window !== "undefined" && window.innerWidth < 640 ? 640 : 1280 },
-            },
-          },
-          (decodedText) => {
-            onScanRef.current(decodedText.trim());
-          },
-          () => { /* NotFoundException per frame — silent */ }
-        );
-        startedRef.current = true;
-        // Always start paused — user must tap to initiate each scan
-        if (!scanActiveRef.current) {
-          try { scanner.pause(false); } catch { /* ignore */ }
-        }
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 1280 } },
+          audio: false,
+        });
       } catch (err: unknown) {
-        if (isCancelled) return;
-        scannerRef.current = null;
+        if (cancelled) return;
         const msg = String(err).toLowerCase();
         setCameraError(
-          msg.includes("permission") ||
-          msg.includes("notallowed") ||
-          msg.includes("denied")
+          msg.includes("permission") || msg.includes("denied") || msg.includes("notallowed")
             ? "Camera permission denied. Allow camera access and reload."
             : "Camera failed to start — please reload."
         );
         return;
       }
 
-      if (isCancelled) {
-        startedRef.current = false;
-        scanner.stop().catch(() => {});
-        scannerRef.current = null;
-        clearContainer();
-      }
+      if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+
+      const video = videoRef.current!;
+      video.srcObject = stream;
+      await video.play();
+
+      const loop = async () => {
+        if (cancelled) return;
+        try {
+          const [hit] = await detector.detect(video);
+          if (hit?.rawValue) onScanRef.current(hit.rawValue.trim());
+        } catch { /* frame not ready */ }
+        if (!cancelled) rafId = requestAnimationFrame(loop);
+      };
+      rafId = requestAnimationFrame(loop);
     };
 
-    run();
+    start();
 
     return () => {
-      isCancelled = true;
-      startedRef.current = false;
-      const s = scannerRef.current;
-      scannerRef.current = null;
-      if (s) {
-        try {
-          const st = s.getState();
-          if (
-            st === Html5QrcodeScannerState.SCANNING ||
-            st === Html5QrcodeScannerState.PAUSED
-          ) {
-            s.stop().catch(() => {});
-          }
-        } catch { /* already stopped */ }
+      cancelled = true;
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      const video = videoRef.current;
+      if (video?.srcObject) {
+        (video.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
+        video.srcObject = null;
       }
-      clearContainer();
     };
   }, [active]);
 
   return (
     <div className="relative w-full bg-black">
-      <div id={SCANNER_ELEMENT_ID} className="w-full" />
+      <video ref={videoRef} className="w-full" playsInline muted autoPlay />
 
       {/* Loading spinner — shown while API call is in flight */}
       {loading && (
@@ -163,8 +93,6 @@ export default function QrScanner({ onScan, active, scanActive, loading = false,
           <span className="text-white/70 text-xs font-medium tracking-wide">Checking ticket…</span>
         </div>
       )}
-
-
 
       {cameraError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center bg-black/90 min-h-[200px]">
