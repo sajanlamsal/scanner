@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Flush Redis — ticket cache, stats, recent scans
-  const ticketKeys = await redis.keys("ticket:*");
+  const ticketKeys = await redis.keys("ticket_*");
   if (ticketKeys.length > 0) {
     await redis.del(...(ticketKeys as [string, ...string[]]));
   }

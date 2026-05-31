@@ -1,7 +1,7 @@
 /** Redis key helpers — single source of truth for all key names */
 
 /** Cached ticket data for a barcode */
-export const ticketKey = (barcode: string) => `ticket:${barcode}`;
+export const ticketKey = (barcode: string) => `ticket_${barcode}`;
 
 /** Hash: fields `total` and `checkedIn` */
 export const statsKey = () => `event:stats`;
