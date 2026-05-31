@@ -1,8 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import ScanFeedback from "@/components/scanner/ScanFeedback";
-import ScanToast from "@/components/scanner/ScanToast";
+import ScanResultBanner from "@/components/scanner/ScanResultBanner";
 import RecentScansBar from "@/components/scanner/RecentScansBar";
 import { useScanner } from "@/hooks/useScanner";
 import { useEffect, useCallback } from "react";
@@ -18,7 +17,7 @@ const QrScanner = dynamic(() => import("@/components/scanner/QrScanner"), {
 });
 
 export default function ScannerPage() {
-  const { state, handleScan, dismissOverlay } = useScanner();
+  const { state, handleScan, dismissOverlay, startScan, toggleScanMode } = useScanner();
   const { checkedIn, total } = state.stats;
   const pct = total > 0 ? Math.round((checkedIn / total) * 100) : 0;
   const router = useRouter();
@@ -90,7 +89,7 @@ export default function ScannerPage() {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]" />
           </span>
           <span className="text-[11px] text-zinc-500 font-medium uppercase tracking-widest">
-            Live · Ready to scan
+            {state.scanActive ? "Live · Scanning…" : "Tap camera to scan"}
           </span>
         </div>
 
@@ -99,36 +98,53 @@ export default function ScannerPage() {
           {/* top edge glow */}
           <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-green-500/50 to-transparent z-10 pointer-events-none" />
 
-          <QrScanner onScan={handleScan} active={state.scanning} />
+          <QrScanner
+            onScan={handleScan}
+            active={state.scanning}
+            scanActive={state.scanActive}
+            loading={state.loading}
+            busy={!!state.overlay}
+            onActivate={startScan}
+          />
 
-          {state.overlay && state.overlay.result === "success" && (
-              <ScanFeedback
-                result={state.overlay.result}
-                attendeeName={state.overlay.attendeeName ?? null}
-                checkedInAt={state.overlay.checkedInAt}
-                onDismiss={dismissOverlay}
-              />
-            )}
-
-          {state.overlay &&
-            (state.overlay.result === "not_found" ||
-              state.overlay.result === "inactive" ||
-              state.overlay.result === "already_scanned") && (
-              <ScanToast
-                result={state.overlay.result}
-                attendeeName={state.overlay.attendeeName ?? null}
-                onDismiss={dismissOverlay}
-              />
-            )}
-
-          {!state.overlay && (
-            <div className="absolute bottom-3 inset-x-0 flex justify-center pointer-events-none">
-              <span className="bg-black/50 backdrop-blur-sm border border-white/10 text-zinc-400 text-[11px] px-3 py-1 rounded-full">
-                Point at barcode or QR code
-              </span>
-            </div>
-          )}
         </div>
+
+        {/* ── Scan mode toggle ── */}
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] text-zinc-500 uppercase tracking-widest font-medium">Mode</span>
+          <div className="flex bg-white/[0.04] border border-white/[0.06] rounded-full p-0.5 gap-0.5">
+            <button
+              onClick={() => state.scanMode !== "tap" && toggleScanMode()}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                state.scanMode === "tap"
+                  ? "bg-green-500 text-zinc-950 shadow-sm"
+                  : "text-zinc-400"
+              }`}
+            >
+              Tap
+            </button>
+            <button
+              onClick={() => state.scanMode !== "always" && toggleScanMode()}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                state.scanMode === "always"
+                  ? "bg-green-500 text-zinc-950 shadow-sm"
+                  : "text-zinc-400"
+              }`}
+            >
+              Always On
+            </button>
+          </div>
+        </div>
+
+        {/* ── Scan result banner ── */}
+        {state.overlay && (
+          <ScanResultBanner
+            result={state.overlay.result}
+            attendeeName={state.overlay.attendeeName ?? null}
+            checkedInAt={state.overlay.checkedInAt}
+            onDismiss={dismissOverlay}
+          />
+        )}
 
         {/* ── Recent check-ins ── */}
         <RecentScansBar scans={state.recentScans} />

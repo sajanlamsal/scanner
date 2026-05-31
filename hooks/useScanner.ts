@@ -5,6 +5,9 @@ import type { ScanResponse, RecentScanEntry, EventStats } from "@/types";
 
 interface ScannerState {
   scanning: boolean;
+  scanActive: boolean;
+  scanMode: "tap" | "always";
+  loading: boolean;
   overlay: ScanResponse | null;
   recentScans: RecentScanEntry[];
   stats: EventStats;
@@ -23,6 +26,9 @@ const SCAN_MEMORY_TTL = 8_000;
 export function useScanner() {
   const [state, setState] = useState<ScannerState>({
     scanning: true,
+    scanActive: false,
+    scanMode: "tap",
+    loading: false,
     overlay: null,
     recentScans: [],
     stats: { total: 0, checkedIn: 0 },
@@ -47,6 +53,9 @@ export function useScanner() {
       }
       return;
     }
+
+    // Show spinner while waiting for API response
+    setState((s) => ({ ...s, loading: true, scanActive: false }));
 
     try {
       const res = await fetch("/api/scan", {
@@ -85,6 +94,8 @@ export function useScanner() {
 
         return {
           ...s,
+          loading: false,
+          scanActive: false,
           overlay: data,
           recentScans: entry
             ? [entry, ...s.recentScans].slice(0, 5)
@@ -101,6 +112,7 @@ export function useScanner() {
       processingRef.current = false;
       setState((s) => ({
         ...s,
+        loading: false,
         scanning: true,
         overlay: {
           result: "not_found",
@@ -112,13 +124,29 @@ export function useScanner() {
 
   const dismissOverlay = useCallback(() => {
     processingRef.current = false;
-    setState((s) => ({ ...s, overlay: null, scanning: true }));
+    setState((s) => ({
+      ...s,
+      overlay: null,
+      scanning: true,
+      scanActive: s.scanMode === "always", // auto-resume in always-on mode
+    }));
+  }, []);
+
+  const startScan = useCallback(() => {
+    setState((s) => ({ ...s, scanActive: true }));
+  }, []);
+
+  const toggleScanMode = useCallback(() => {
+    setState((s) => {
+      const newMode = s.scanMode === "tap" ? "always" : "tap";
+      return { ...s, scanMode: newMode, scanActive: newMode === "always" };
+    });
   }, []);
 
   const setStats = useCallback((stats: EventStats) => {
     setState((s) => ({ ...s, stats }));
   }, []);
 
-  return { state, handleScan, dismissOverlay, setStats };
+  return { state, handleScan, dismissOverlay, setStats, startScan, toggleScanMode };
 }
 
