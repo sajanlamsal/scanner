@@ -14,7 +14,6 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.1.0",
     "@upstash/redis": "^1.38.0",
     "@zxing/browser": "^0.2.0",
     "@zxing/library": "^0.22.0",
@@ -23,6 +22,7 @@
     "html5-qrcode": "^2.3.8",
     "next": "16.2.6",
     "papaparse": "^5.5.3",
+    "postgres": "^3.4.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zod": "^4.4.3"

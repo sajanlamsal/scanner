@@ -36,14 +36,21 @@ export default function AdminImportPage() {
         method: "POST",
         body: formData,
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message ?? "Import failed");
-      } else {
-        setResult(data);
+      let data: { message?: string; inserted?: number; skipped?: number; errors?: string[] };
+      try {
+        data = await res.json();
+      } catch {
+        const text = await res.text().catch(() => "");
+        setError(`Server error (${res.status})${text ? `: ${text.slice(0, 200)}` : ""}`);
+        return;
       }
-    } catch {
-      setError("Network error — please try again");
+      if (!res.ok) {
+        setError(data.message ?? `Import failed (${res.status})`);
+      } else {
+        setResult(data as ImportResult);
+      }
+    } catch (err) {
+      setError(`Network error — ${String(err)}`);
     } finally {
       setLoading(false);
     }

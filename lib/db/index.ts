@@ -1,14 +1,17 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
+let _db: ReturnType<typeof drizzle> | null = null;
+
 /**
- * Returns a fresh Drizzle client per call — safe for serverless (Neon HTTP is
- * stateless) and avoids module-level initialization that would throw at build
- * time when NEON_DATABASE_URL is not set.
+ * Singleton Drizzle client — reuses the postgres.js connection pool across
+ * requests instead of opening a new connection each time.
  */
 export function getDb() {
-  return drizzle(neon(process.env.NEON_DATABASE_URL!), { schema });
+  if (_db) return _db;
+  _db = drizzle(postgres(process.env.DATABASE_URL!), { schema });
+  return _db;
 }
 
 export { schema };
