@@ -14,15 +14,7 @@ interface Props {
 
 const SCANNER_ELEMENT_ID = "qr-scan-region";
 
-// Formats to detect — QR codes + common event ticket barcodes
-const FORMATS = [
-  Html5QrcodeSupportedFormats.QR_CODE,
-  Html5QrcodeSupportedFormats.CODE_128,
-  Html5QrcodeSupportedFormats.CODE_39,
-  Html5QrcodeSupportedFormats.EAN_13,
-  Html5QrcodeSupportedFormats.EAN_8,
-  Html5QrcodeSupportedFormats.DATA_MATRIX,
-];
+const FORMATS = [Html5QrcodeSupportedFormats.QR_CODE];
 
 function clearContainer() {
   const el = document.getElementById(SCANNER_ELEMENT_ID);
@@ -86,6 +78,7 @@ export default function QrScanner({ onScan, active, scanActive, loading = false,
       const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID, {
         verbose: false,
         formatsToSupport: FORMATS,
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
       });
       scannerRef.current = scanner;
 
@@ -93,16 +86,16 @@ export default function QrScanner({ onScan, active, scanActive, loading = false,
         await scanner.start(
           { facingMode: { ideal: "environment" } },
           {
-            fps: 15,
+            fps: 10,
             aspectRatio: 1.0,
             qrbox: (w: number, h: number) => {
-              const edge = Math.round(Math.min(w, h) * 0.90);
+              const edge = Math.round(Math.min(w, h) * 0.72);
               return { width: edge, height: edge };
             },
             videoConstraints: {
               facingMode: { ideal: "environment" },
-              width: { ideal: 1280 },
-              height: { ideal: 1280 },
+              width: { ideal: typeof window !== "undefined" && window.innerWidth < 640 ? 640 : 1280 },
+              height: { ideal: typeof window !== "undefined" && window.innerWidth < 640 ? 480 : 1280 },
             },
           },
           (decodedText) => {
