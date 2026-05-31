@@ -116,7 +116,7 @@ export default function ScanResultBanner({
 
   useEffect(() => {
     playFeedback(result === "success" ? "success" : "error");
-    const duration = result === "success" ? 1800 : 2500;
+    const duration = result === "success" ? 3000 : 2500;
     const t = setTimeout(onDismiss, duration);
     return () => clearTimeout(t);
   }, [result, onDismiss]);
