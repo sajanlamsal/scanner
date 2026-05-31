@@ -164,33 +164,7 @@ export default function QrScanner({ onScan, active, scanActive, loading = false,
         </div>
       )}
 
-      {/* Tap-to-scan overlay — shown when camera is ready but not actively scanning */}
-      {!cameraError && !scanActive && !loading && !busy && (
-        <button
-          onClick={onActivate}
-          className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/50 active:bg-black/30 transition-colors"
-          aria-label="Tap to scan"
-        >
-          <div className="w-16 h-16 rounded-full border-2 border-white/40 bg-white/10 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
-              <circle cx="12" cy="13" r="3"/>
-            </svg>
-          </div>
-          <span className="text-white font-semibold text-base tracking-wide">Tap to scan</span>
-          <span className="text-white/50 text-xs">QR code or barcode</span>
-        </button>
-      )}
 
-      {/* Scanning active indicator */}
-      {!cameraError && scanActive && (
-        <div className="absolute top-3 inset-x-0 flex justify-center pointer-events-none z-10">
-          <span className="bg-green-500/20 backdrop-blur-sm border border-green-500/30 text-green-400 text-[11px] px-3 py-1.5 rounded-full flex items-center gap-1.5 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            Scanning…
-          </span>
-        </div>
-      )}
 
       {cameraError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 text-center bg-black/90 min-h-[200px]">

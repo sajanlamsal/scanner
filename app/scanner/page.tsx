@@ -81,17 +81,6 @@ export default function ScannerPage() {
       </header>
 
       <div className="relative max-w-sm mx-auto px-4 py-5 space-y-4">
-        {/* ── Live pulse ── */}
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-50" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.8)]" />
-          </span>
-          <span className="text-[11px] text-zinc-500 font-medium uppercase tracking-widest">
-            {state.scanActive ? "Live · Scanning…" : "Tap camera to scan"}
-          </span>
-        </div>
-
         {/* ── Camera card ── */}
         <div className="relative rounded-2xl overflow-hidden ring-1 ring-white/[0.08] shadow-2xl shadow-black/80">
           {/* top edge glow */}
