@@ -95,7 +95,7 @@ export default function QrScanner({ onScan, active, scanActive, loading = false,
             videoConstraints: {
               facingMode: { ideal: "environment" },
               width: { ideal: typeof window !== "undefined" && window.innerWidth < 640 ? 640 : 1280 },
-              height: { ideal: typeof window !== "undefined" && window.innerWidth < 640 ? 480 : 1280 },
+              height: { ideal: typeof window !== "undefined" && window.innerWidth < 640 ? 640 : 1280 },
             },
           },
           (decodedText) => {

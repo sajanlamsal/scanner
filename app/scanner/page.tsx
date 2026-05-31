@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import ScanResultBanner from "@/components/scanner/ScanResultBanner";
-import RecentScansBar from "@/components/scanner/RecentScansBar";
 import { useScanner } from "@/hooks/useScanner";
 import { useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -145,9 +144,6 @@ export default function ScannerPage() {
             onDismiss={dismissOverlay}
           />
         )}
-
-        {/* ── Recent check-ins ── */}
-        <RecentScansBar scans={state.recentScans} />
       </div>
     </main>
   );
