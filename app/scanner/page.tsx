@@ -16,7 +16,7 @@ const QrScanner = dynamic(() => import("@/components/scanner/QrScanner"), {
 });
 
 export default function ScannerPage() {
-  const { state, handleScan, dismissOverlay, startScan, toggleScanMode } = useScanner();
+  const { state, handleScan, dismissOverlay, startScan } = useScanner();
   const { checkedIn, total } = state.stats;
   const pct = total > 0 ? Math.round((checkedIn / total) * 100) : 0;
   const router = useRouter();
@@ -95,33 +95,6 @@ export default function ScannerPage() {
             onActivate={startScan}
           />
 
-        </div>
-
-        {/* ── Scan mode toggle ── */}
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] text-zinc-500 uppercase tracking-widest font-medium">Mode</span>
-          <div className="flex bg-white/[0.04] border border-white/[0.06] rounded-full p-0.5 gap-0.5">
-            <button
-              onClick={() => state.scanMode !== "tap" && toggleScanMode()}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                state.scanMode === "tap"
-                  ? "bg-green-500 text-zinc-950 shadow-sm"
-                  : "text-zinc-400"
-              }`}
-            >
-              Tap
-            </button>
-            <button
-              onClick={() => state.scanMode !== "always" && toggleScanMode()}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                state.scanMode === "always"
-                  ? "bg-green-500 text-zinc-950 shadow-sm"
-                  : "text-zinc-400"
-              }`}
-            >
-              Always On
-            </button>
-          </div>
         </div>
 
         {/* ── Scan result banner ── */}

@@ -6,7 +6,6 @@ import type { ScanResponse, EventStats } from "@/types";
 interface ScannerState {
   scanning: boolean;
   scanActive: boolean;
-  scanMode: "tap" | "always";
   loading: boolean;
   overlay: ScanResponse | null;
   stats: EventStats;
@@ -25,8 +24,7 @@ const SCAN_MEMORY_TTL = 8_000;
 export function useScanner() {
   const [state, setState] = useState<ScannerState>({
     scanning: true,
-    scanActive: false,
-    scanMode: "tap",
+    scanActive: true,
     loading: false,
     overlay: null,
     stats: { total: 0, checkedIn: 0 },
@@ -127,19 +125,12 @@ export function useScanner() {
       ...s,
       overlay: null,
       scanning: true,
-      scanActive: s.scanMode === "always", // auto-resume in always-on mode
+      scanActive: true,
     }));
   }, []);
 
   const startScan = useCallback(() => {
     setState((s) => ({ ...s, scanActive: true }));
-  }, []);
-
-  const toggleScanMode = useCallback(() => {
-    setState((s) => {
-      const newMode = s.scanMode === "tap" ? "always" : "tap";
-      return { ...s, scanMode: newMode, scanActive: newMode === "always" };
-    });
   }, []);
 
   const setStats = useCallback((stats: EventStats) => {
@@ -154,6 +145,6 @@ export function useScanner() {
       .catch(() => {});
   }, []);
 
-  return { state, handleScan, dismissOverlay, setStats, startScan, toggleScanMode };
+  return { state, handleScan, dismissOverlay, setStats, startScan };
 }
 
