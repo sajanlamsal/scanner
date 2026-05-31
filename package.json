@@ -6,22 +6,47 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:push": "dotenv -e .env.local -- drizzle-kit push",
+    "db:studio": "dotenv -e .env.local -- drizzle-kit studio",
+    "seed": "dotenv -e .env.local -- tsx scripts/seed-csv.ts",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "@upstash/redis": "^1.38.0",
+    "@zxing/browser": "^0.2.0",
+    "@zxing/library": "^0.22.0",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "html5-qrcode": "^2.3.8",
     "next": "16.2.6",
+    "papaparse": "^5.5.3",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
+    "@types/papaparse": "^5.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "dotenv-cli": "^11.0.0",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
     "tailwindcss": "^4",
+    "ts-jest": "^29.4.11",
+    "tsx": "^4.22.3",
     "typescript": "^5"
   }
 }

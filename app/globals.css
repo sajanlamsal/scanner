@@ -10,6 +10,19 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --animate-scan: scan 2s ease-in-out infinite;
+  --animate-slide-up: slideUp 0.2s ease-out;
+}
+
+@keyframes scan {
+  0%   { top: 0%; }
+  50%  { top: calc(100% - 2px); }
+  100% { top: 0%; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,3 +37,21 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ── html5-qrcode overrides ──────────────────────────────────────────────── */
+/* aspectRatio: 1.0 makes html5-qrcode create a square scan region naturally */
+/* No position overrides needed — let html5-qrcode control its own layout.   */
+#qr-scan-region__scan_region video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+/* Hide html5-qrcode's qrbox highlight div and canvas */
+#qr-scan-region__scan_region > div,
+#qr-scan-region canvas,
+#qr-scan-region__dashboard_section {
+  display: none !important;
+}
+
+
