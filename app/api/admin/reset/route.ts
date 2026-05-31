@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { tickets, scanLogs } from "@/lib/db/schema";
 import { redis } from "@/lib/redis";
@@ -49,6 +50,14 @@ export async function POST(req: NextRequest) {
     await redis.del(...(ticketKeys as [string, ...string[]]));
   }
   await redis.del(statsKey(), recentScansKey());
+
+  // Re-seed total so /api/stats stays correct — checkedIn resets to 0
+  if (!deleteTickets) {
+    const [{ count: totalCount }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(tickets);
+    await redis.hset(statsKey(), { total: totalCount, checkedIn: 0 });
+  }
 
   return NextResponse.json({
     message: deleteTickets ? "All tickets deleted" : "Check-in data reset",
